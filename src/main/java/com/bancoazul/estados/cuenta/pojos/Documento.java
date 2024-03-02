@@ -1,14 +1,13 @@
 package com.bancoazul.estados.cuenta.pojos;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.google.gson.annotations.SerializedName;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * POJO class to handle Document data use in Docuware
@@ -21,13 +20,13 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Documento {
 
-	@SerializedName("idArchivador")
-	private String idArchivador;
-	@SerializedName("nombreArchivo")
-	private String nombreArchivo;
-	@SerializedName("documentoBase64")
-	private String documentoBase64;
-	@SerializedName("indices")
-	private List<Indice> indices = new ArrayList<>();
+    @SerializedName("idArchivador")
+    private String idArchivador;
+    @SerializedName("nombreArchivo")
+    private String nombreArchivo;
+    @SerializedName("documentoBase64")
+    private String documentoBase64;
+    @SerializedName("indices")
+    private List<Indice> indices = new ArrayList<>();
 
 }

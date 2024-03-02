@@ -19,9 +19,9 @@ import lombok.Setter;
 @NoArgsConstructor
 public class Indice {
 
-	@SerializedName("index")
-	private String indice;
-	@SerializedName("value")
-	private String valor;
+    @SerializedName("index")
+    private String indice;
+    @SerializedName("value")
+    private String valor;
 
 }

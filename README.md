@@ -1,1 +1,1 @@
-# estados-cuenta-TC-CC
+# estados-cuenta-tarjetas-cc-app

@@ -13,9 +13,9 @@ import lombok.Setter;
 @NoArgsConstructor
 public class DocuwareResponse {
 
-	@SerializedName("codigo")
-	private String codigo;
-	@SerializedName("mensaje")
-	private String mensaje;
+    @SerializedName("codigo")
+    private String codigo;
+    @SerializedName("mensaje")
+    private String mensaje;
 
 }
