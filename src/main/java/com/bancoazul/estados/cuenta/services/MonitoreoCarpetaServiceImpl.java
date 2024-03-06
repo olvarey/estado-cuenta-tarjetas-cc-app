@@ -1,29 +1,21 @@
 package com.bancoazul.estados.cuenta.services;
 
+import com.bancoazul.estados.cuenta.pojos.Documento;
+import com.bancoazul.estados.cuenta.pojos.Indice;
+import com.bancoazul.estados.cuenta.pojos.Registro;
+import com.bancoazul.estados.cuenta.utils.PdfABase64ConverterService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardWatchEventKinds;
-import java.nio.file.WatchEvent;
-import java.nio.file.WatchKey;
-import java.nio.file.WatchService;
+import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
-import com.bancoazul.estados.cuenta.pojos.Documento;
-import com.bancoazul.estados.cuenta.pojos.Indice;
-import com.bancoazul.estados.cuenta.utils.PdfABase64ConverterService;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service class to monitor CREATE events in a specific folder
@@ -50,9 +42,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     @Override
     public void watchDirectory() {
         try {
-            File folderEct = new File(directoryPathEct);
-            File folderEcc = new File(directoryPathEcc);
-            if (folderEct.isDirectory() && folderEcc.isDirectory()) {
+            if (folderExist(directoryPathEct) && folderExist(directoryPathEcc)) {
                 WatchService watchService = FileSystems.getDefault().newWatchService();
                 Path pathEtc = Paths.get(directoryPathEct);
                 Path pathEcc = Paths.get(directoryPathEcc);
@@ -61,15 +51,21 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
                 WatchKey key;
                 while ((key = watchService.take()) != null) {
                     Path baseDir = (Path) key.watchable();
+                    String tipoEstadoCuenta = fetchTipoEstadoCuenta(baseDir);
                     for (WatchEvent<?> event : key.pollEvents()) {
-                        String tipoEstadoCuenta = directoryPathEct.equals(baseDir.toString()) ? "ECT" : directoryPathEcc.equals(baseDir.toString()) ? "ECC" : "";
+                        Thread.sleep(3000);
                         String txtLocalPath = baseDir + File.separator + event.context();
-                        File txtFile = new File(txtLocalPath);
-                        boolean isValid = metaDataFileName.equals(txtFile.getName().toLowerCase());
-                        boolean isNotEmpty = txtFile.length() > 0;
-                        if (txtFile.exists() && isValid && isNotEmpty) {
-                            Thread.sleep(3000);
-                            List<Documento> documentos = readMetadata(baseDir, txtLocalPath, tipoEstadoCuenta);
+                        if (checkTxtIsValid(txtLocalPath)) {
+                            List<Documento> documentos = fetchTxtMetadata(baseDir, txtLocalPath, tipoEstadoCuenta);
+                            if (!documentos.isEmpty()) {
+                                for (Documento doc : documentos) {
+                                    if (!docuwareService.documentExist(doc)) {
+                                        log.info("Respuesta API: " + docuwareService.indexDocument(doc));
+                                    } else {
+                                        log.info("El documento ya está indexado.");
+                                    }
+                                }
+                            }
                         } else {
                             log.info("metadata TXT file not found: " + txtLocalPath);
                         }
@@ -85,39 +81,41 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         }
     }
 
-    private Documento composeDocumento(Path baseDir, String txtLine, String tipoEstadoCuenta) {
-        String[] fieldsArray = txtLine.split(",");
-        List<String> fields = Arrays.asList(fieldsArray);
-        log.info("Longitud de la linea leida: " + fields.size());
-        if (fields.size() == 4) {
-            String nombreArchivo = fields.get(0);
-            String periodo = fields.get(1);
-            String tarjetaCuenta = fields.get(2);
-            String cliente = fields.get(3);
-        } else {
-
-        }
-
+    private Documento composeDocumento(Path baseDir, Registro registro, String tipoEstadoCuenta) {
         Documento newDocumento = new Documento();
         newDocumento.setIdArchivador(idArchivador);
-        newDocumento.setNombreArchivo(fields.get(0));
-        // newDocumento.setDocumentoBase64(pdfABase64ConverterService.convertToBase64(txtFile));
-        newDocumento.setDocumentoBase64(fields.get(1));
-        Indice numeroUnicoCliente = new Indice("NUMERO_UNICO_DE_CLIENTE", "010000001022024");
-        Indice codigoDocumento = new Indice("CODIGO_DE_DOCUMENTO", "AN026");
-        newDocumento.getIndices().add(numeroUnicoCliente);
-        newDocumento.getIndices().add(codigoDocumento);
+        newDocumento.setNombreArchivo(registro.getNombreArchivo());
+        newDocumento.setDocumentoBase64(pdfABase64ConverterService.convertToBase64(new File(baseDir + File.separator + registro.getNombreArchivo())));
+        Indice numeroTarjetaCuenta = new Indice("NUMERO_DE_CUENTA", registro.getTarjetaCuenta());
+        Indice cliente = new Indice("CLIENTE", registro.getCliente());
+        Indice anio = new Indice("ANIO", registro.getAnio());
+        Indice mes = new Indice("MES", registro.getMes());
+        Indice tipoEstadoDeCuenta = new Indice("TIPO_ESTADO_DE_CUENTA", tipoEstadoCuenta);
+        newDocumento.getIndices().add(numeroTarjetaCuenta);
+        newDocumento.getIndices().add(cliente);
+        newDocumento.getIndices().add(anio);
+        newDocumento.getIndices().add(mes);
+        newDocumento.getIndices().add(tipoEstadoDeCuenta);
         return newDocumento;
     }
 
-    private List<Documento> readMetadata(Path baseDir, String txtFilePath, String tipoEstadoCuenta) {
+    private List<Documento> fetchTxtMetadata(Path baseDir, String txtFilePath, String tipoEstadoCuenta) {
         List<Documento> documentoList = new ArrayList<>();
         // Specify the path to your text file
         Path filePath = Paths.get(txtFilePath);
         try (Stream<String> stream = Files.lines(filePath)) {
-            // Read each line from the file and print it to the console
-            stream.forEach(line -> {
-                documentoList.add(composeDocumento(baseDir, line, tipoEstadoCuenta));
+            // Read each line from the file
+            stream.forEach(txtLine -> {
+                Registro newRegistro = composeRegistro(txtLine);
+                if (newRegistro != null) {
+                    if (pdfFileExist(baseDir + File.separator + newRegistro.getNombreArchivo())) {
+                        documentoList.add(composeDocumento(baseDir, newRegistro, tipoEstadoCuenta));
+                    } else {
+                        log.info("Archivo: " + newRegistro.getNombreArchivo() + " no existe!");
+                    }
+                } else {
+                    log.info("Linea malformada!");
+                }
             });
         } catch (IOException e) {
             e.printStackTrace();
@@ -125,7 +123,50 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         return documentoList;
     }
 
-    private void readPDF() {
+    private boolean pdfFileExist(String pdfPath) {
+        File newPdf = new File(pdfPath);
+        return newPdf.exists();
+    }
 
+    public boolean folderExist(String folderPath) {
+        File folder = new File(folderPath);
+        return folder.exists() && folder.isDirectory();
+    }
+
+    public String fetchTipoEstadoCuenta(Path baseDir) {
+        String tipoEstadoCuenta = "";
+        if (directoryPathEct.equals(baseDir.toString())) {
+            tipoEstadoCuenta = "ECT";
+        }
+        if (directoryPathEcc.equals(baseDir.toString())) {
+            tipoEstadoCuenta = "ECC";
+        }
+        return tipoEstadoCuenta;
+    }
+
+    public boolean checkTxtIsValid(String txtLocalPath) {
+        File txtFile = new File(txtLocalPath);
+        boolean fileExist = txtFile.exists();
+        boolean isNamedProperly = metaDataFileName.equals(txtFile.getName().toLowerCase());
+        boolean isNotEmpty = txtFile.length() > 0;
+        boolean isTxtfile = txtFile.getName().toLowerCase().endsWith(".txt");
+        return fileExist && isNamedProperly && isNotEmpty && isTxtfile;
+    }
+
+    public Registro composeRegistro(String txtLine) {
+        Registro registro = new Registro();
+        String[] fieldsArray = txtLine.split(",");
+        List<String> fields = Arrays.asList(fieldsArray);
+        if (fields.size() == 4) {
+            registro.setNombreArchivo(fields.get(0));
+            registro.setAnio(fields.get(1).substring(0, 4));
+            registro.setMes(fields.get(1).substring(4, 6));
+            registro.setTarjetaCuenta(fields.get(2));
+            registro.setCliente(fields.get(3));
+            return registro;
+        } else {
+            log.info("Text line hasn't all fields needed");
+            return null;
+        }
     }
 }

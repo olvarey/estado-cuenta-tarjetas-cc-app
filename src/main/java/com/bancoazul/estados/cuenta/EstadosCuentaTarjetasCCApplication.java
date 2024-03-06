@@ -10,7 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import java.io.IOException;
 
 /**
- * EstadosCuentaTarjetasCCApplication: Main class responsable of monitoring
+ * EstadosCuentaTarjetasCCApplication: Main class responsable for monitoring
  * CREATE_EVENT changes in a specific folder in file system then index PDF
  * documents through Docuware API
  *
