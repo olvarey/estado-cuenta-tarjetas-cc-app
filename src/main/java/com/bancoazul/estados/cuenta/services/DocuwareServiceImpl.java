@@ -82,7 +82,7 @@ public class DocuwareServiceImpl implements DocuwareService {
             String codigo = res.get("codigo").getAsString();
             String mensaje = res.get("mensaje").getAsString();
             if (statusCode == 200 && "000".equals(codigo)) {
-                log.info("Status code: " + statusCode);
+                log.info("Documento indexado correctamente: " + statusCode);
             }
             return mensaje;
         }
