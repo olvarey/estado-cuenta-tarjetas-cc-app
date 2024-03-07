@@ -5,7 +5,8 @@ import com.bancoazul.estados.cuenta.pojos.Indice;
 import com.bancoazul.estados.cuenta.pojos.Registro;
 import com.bancoazul.estados.cuenta.utils.PdfABase64ConverterService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -23,10 +24,10 @@ import java.util.stream.Stream;
  * @author Melvin Reyes
  */
 @Service
-@Slf4j
 @RequiredArgsConstructor
 public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
 
+    private static final Logger LOGGER = LogManager.getLogger(MonitoreoCarpetaServiceImpl.class);
     private final DocuwareService docuwareService;
     private final PdfABase64ConverterService pdfABase64ConverterService;
 
@@ -60,20 +61,20 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
                             if (!documentos.isEmpty()) {
                                 for (Documento doc : documentos) {
                                     if (!docuwareService.documentExist(doc)) {
-                                        log.info("Respuesta API: " + docuwareService.indexDocument(doc));
+                                        LOGGER.info("Respuesta API: {}", docuwareService.indexDocument(doc));
                                     } else {
-                                        log.info("El documento ya está indexado.");
+                                        LOGGER.info("El documento ya está indexado.");
                                     }
                                 }
                             }
                         } else {
-                            log.info("metadata TXT file not found: " + txtLocalPath);
+                            LOGGER.info("metadata TXT file not found: {}", txtLocalPath);
                         }
                     }
                     key.reset();
                 }
             } else {
-                log.info("Invalid folder path!");
+                LOGGER.info("Invalid folder path!");
             }
 
         } catch (Exception e) {
@@ -111,10 +112,10 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
                     if (pdfFileExist(baseDir + File.separator + newRegistro.getNombreArchivo())) {
                         documentoList.add(composeDocumento(baseDir, newRegistro, tipoEstadoCuenta));
                     } else {
-                        log.info("Archivo: " + newRegistro.getNombreArchivo() + " no existe!");
+                        LOGGER.info("Archivo: {} no existe!", newRegistro.getNombreArchivo());
                     }
                 } else {
-                    log.info("Linea malformada!");
+                    LOGGER.info("Linea malformada!");
                 }
             });
         } catch (IOException e) {
@@ -136,10 +137,10 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     public String fetchTipoEstadoCuenta(Path baseDir) {
         String tipoEstadoCuenta = "";
         if (directoryPathEct.equals(baseDir.toString())) {
-            tipoEstadoCuenta = "ECT";
+            tipoEstadoCuenta = "EC01";
         }
         if (directoryPathEcc.equals(baseDir.toString())) {
-            tipoEstadoCuenta = "ECC";
+            tipoEstadoCuenta = "EC02";
         }
         return tipoEstadoCuenta;
     }
@@ -165,7 +166,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
             registro.setCliente(fields.get(3));
             return registro;
         } else {
-            log.info("Text line hasn't all fields needed");
+            LOGGER.info("Text line hasn't all fields needed");
             return null;
         }
     }
