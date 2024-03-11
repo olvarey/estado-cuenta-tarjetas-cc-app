@@ -16,6 +16,8 @@ import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -64,7 +66,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
                                 for (Documento doc : documentos) {
                                     if (!docuwareService.documentExist(doc)) {
                                         LOGGER.info("Respuesta API: {}", docuwareService.indexDocument(doc));
-                                        moveFile(baseDir + File.separator + doc.getNombreArchivo(), destination, tipoEstadoCuenta);
+                                        moveFiles(baseDir + File.separator + doc.getNombreArchivo(), destination, tipoEstadoCuenta, doc.getIndices().get(3).getValor());
                                     } else {
                                         LOGGER.info("El documento ya está indexado.");
                                     }
@@ -90,41 +92,27 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         newDocumento.setIdArchivador(idArchivador);
         newDocumento.setNombreArchivo(registro.getNombreArchivo());
         newDocumento.setDocumentoBase64(pdfABase64ConverterService.convertToBase64(new File(baseDir + File.separator + registro.getNombreArchivo())));
-        Indice numeroTarjetaCuenta = new Indice("NUMERO_DE_CUENTA", registro.getTarjetaCuenta());
-        Indice cliente = new Indice("CLIENTE", registro.getCliente());
-        Indice anio = new Indice("ANIO", registro.getAnio());
-        Indice mes = new Indice("MES", registro.getMes());
-        Indice tipoEstadoDeCuenta = new Indice("TIPO_ESTADO_DE_CUENTA", tipoEstadoCuenta);
-        newDocumento.getIndices().add(numeroTarjetaCuenta);
-        newDocumento.getIndices().add(cliente);
-        newDocumento.getIndices().add(anio);
-        newDocumento.getIndices().add(mes);
-        newDocumento.getIndices().add(tipoEstadoDeCuenta);
+
+        newDocumento.getIndices().add(new Indice("NUMERO_DE_CUENTA", registro.getTarjetaCuenta()));
+        newDocumento.getIndices().add(new Indice("CLIENTE", registro.getCliente()));
+        newDocumento.getIndices().add(new Indice("ANIO", registro.getAnio()));
+        newDocumento.getIndices().add(new Indice("MES", registro.getMes()));
+        newDocumento.getIndices().add(new Indice("TIPO_ESTADO_DE_CUENTA", tipoEstadoCuenta));
+
         return newDocumento;
     }
 
     private List<Documento> fetchTxtMetadata(Path baseDir, String txtFilePath, String tipoEstadoCuenta) {
-        List<Documento> documentoList = new ArrayList<>();
-        // Specify the path to your text file
-        Path filePath = Paths.get(txtFilePath);
-        try (Stream<String> stream = Files.lines(filePath)) {
-            // Read each line from the file
-            stream.forEach(txtLine -> {
-                Registro newRegistro = composeRegistro(txtLine);
-                if (newRegistro != null) {
-                    if (pdfFileExist(baseDir + File.separator + newRegistro.getNombreArchivo())) {
-                        documentoList.add(composeDocumento(baseDir, newRegistro, tipoEstadoCuenta));
-                    } else {
-                        LOGGER.info("Archivo: {} no existe!", newRegistro.getNombreArchivo());
-                    }
-                } else {
-                    LOGGER.info("Linea malformada!");
-                }
-            });
+        try (Stream<String> stream = Files.lines(Paths.get(txtFilePath))) {
+            return stream.map(this::composeRegistro)
+                    .filter(Objects::nonNull)
+                    .filter(newRegistro -> pdfFileExist(baseDir + File.separator + newRegistro.getNombreArchivo()))
+                    .map(newRegistro -> composeDocumento(baseDir, newRegistro, tipoEstadoCuenta))
+                    .collect(Collectors.toList());
         } catch (IOException e) {
             e.printStackTrace();
+            return new ArrayList<>();
         }
-        return documentoList;
     }
 
     private boolean pdfFileExist(String pdfPath) {
@@ -164,7 +152,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         if (fields.size() == 4) {
             registro.setNombreArchivo(fields.get(0));
             registro.setAnio(fields.get(1).substring(0, 4));
-            registro.setMes(fields.get(1).substring(4, 6));
+            registro.setMes(convertMonthNumberToName(fields.get(1).substring(4, 6)));
             registro.setTarjetaCuenta(fields.get(2));
             registro.setCliente(fields.get(3));
             return registro;
@@ -175,13 +163,48 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     }
 
     // move a file from folder to another
-    public void moveFile(String source, String destination, String tipoEstadoCuenta) {
+    public void moveFiles(String source, String destination, String tipoEstadoCuenta, String mes) {
         Path sourcePath = Paths.get(source);
-        Path destinationPath = Paths.get(destination, tipoEstadoCuenta);
+        Path destinationPath = Paths.get(destination, tipoEstadoCuenta, mes);
         try {
+            if (!Files.exists(destinationPath)) {
+                Files.createDirectories(destinationPath);
+            }
             Files.move(sourcePath, destinationPath.resolve(sourcePath.getFileName()), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    // convert month from number to name in spanish
+    private String convertMonthNumberToName(String monthNumber) {
+        switch (monthNumber) {
+            case "01":
+                return "ENERO";
+            case "02":
+                return "FEBRERO";
+            case "03":
+                return "MARZO";
+            case "04":
+                return "ABRIL";
+            case "05":
+                return "MAYO";
+            case "06":
+                return "JUNIO";
+            case "07":
+                return "JULIO";
+            case "08":
+                return "AGOSTO";
+            case "09":
+                return "SEPTIEMBRE";
+            case "10":
+                return "OCTUBRE";
+            case "11":
+                return "NOVIEMBRE";
+            case "12":
+                return "DICIEMBRE";
+            default:
+                return "";
         }
     }
 
