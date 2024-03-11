@@ -21,6 +21,7 @@ banco:
         directorio:
           ect: C:\DOCS_TEST\ECT
           ecc: C:\DOCS_TEST\ECC
+          indexados: C:\ESTADOS_CUENTA_INDEXADOS
           metadata: metadata.txt
 
 # QA properties
@@ -42,6 +43,7 @@ banco:
         directorio:
           ect: C:\DOCS_TEST\ECT
           ecc: C:\DOCS_TEST\ECC
+          indexados: C:\ESTADOS_CUENTA_INDEXADOS
           metadata: metadata.txt
 
 # PROD properties
@@ -63,4 +65,5 @@ banco:
         directorio:
           ect: C:\DOCS_TEST\ECT
           ecc: C:\DOCS_TEST\ECC
+          indexados: C:\ESTADOS_CUENTA_INDEXADOS
           metadata: metadata.txt
