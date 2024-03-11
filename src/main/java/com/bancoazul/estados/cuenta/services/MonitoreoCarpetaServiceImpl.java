@@ -35,6 +35,8 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     private String directoryPathEct;
     @Value("${banco.azul.estados.cuenta.directorio.ecc}")
     private String directoryPathEcc;
+    @Value("${banco.azul.estados.cuenta.directorio.indexados}")
+    private String destination;
     @Value("${banco.azul.estados.cuenta.directorio.metadata}")
     private String metaDataFileName;
     @Value("${banco.azul.estados.cuenta.docuware.idArchivador}")
@@ -54,7 +56,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
                     Path baseDir = (Path) key.watchable();
                     String tipoEstadoCuenta = fetchTipoEstadoCuenta(baseDir);
                     for (WatchEvent<?> event : key.pollEvents()) {
-                        Thread.sleep(3000);
+                        //Thread.sleep(3000);
                         String txtLocalPath = baseDir + File.separator + event.context();
                         if (checkTxtIsValid(txtLocalPath)) {
                             List<Documento> documentos = fetchTxtMetadata(baseDir, txtLocalPath, tipoEstadoCuenta);
@@ -62,6 +64,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
                                 for (Documento doc : documentos) {
                                     if (!docuwareService.documentExist(doc)) {
                                         LOGGER.info("Respuesta API: {}", docuwareService.indexDocument(doc));
+                                        moveFile(baseDir + File.separator + doc.getNombreArchivo(), destination, tipoEstadoCuenta);
                                     } else {
                                         LOGGER.info("El documento ya está indexado.");
                                     }
@@ -170,4 +173,16 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
             return null;
         }
     }
+
+    // move a file from folder to another
+    public void moveFile(String source, String destination, String tipoEstadoCuenta) {
+        Path sourcePath = Paths.get(source);
+        Path destinationPath = Paths.get(destination, tipoEstadoCuenta);
+        try {
+            Files.move(sourcePath, destinationPath.resolve(sourcePath.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 }
