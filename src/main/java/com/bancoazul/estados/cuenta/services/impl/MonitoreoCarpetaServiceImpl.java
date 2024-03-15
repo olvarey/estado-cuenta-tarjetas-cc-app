@@ -49,56 +49,67 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     /**
      * Watches the specified directories for new file creation events and processes the new files.
      */
+    /**
+     * Watches the specified directories for new file creation events and processes the new files.
+     */
     @Override
     public void watchDirectory() {
         try {
-            // Check if the specified directories exist
-            if (folderExist(directoryPathEct) && folderExist(directoryPathEcc)) {
-                // Create a new WatchService
-                WatchService watchService = FileSystems.getDefault().newWatchService();
-                // Register the directories with the WatchService
-                Path pathEtc = Paths.get(directoryPathEct);
-                Path pathEcc = Paths.get(directoryPathEcc);
-                pathEtc.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
-                pathEcc.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
-                WatchKey key;
-                // Start an infinite loop to continuously watch for events
-                while ((key = watchService.take()) != null) {
-                    Path baseDir = (Path) key.watchable();
-                    String tipoEstadoCuenta = fetchTipoEstadoCuenta(baseDir);
-                    // Process all the events in the WatchKey
-                    for (WatchEvent<?> event : key.pollEvents()) {
-                        //Thread.sleep(3000);
-                        String txtLocalPath = baseDir + File.separator + event.context();
-                        // Check if the TXT file is valid
-                        if (checkTxtIsValid(txtLocalPath)) {
-                            // Fetch metadata for the TXT file and process the documents
-                            List<Documento> documentos = fetchTxtMetadata(baseDir, txtLocalPath, tipoEstadoCuenta);
-                            if (!documentos.isEmpty()) {
-                                for (Documento doc : documentos) {
-                                    // Check if the document already exists in the document management system
-                                    if (!docuwareService.documentExist(doc)) {
-                                        // Index the document and move it to a specified location
-                                        LOGGER.debug("Respuesta API: {}", docuwareService.indexDocument(doc));
-                                        moveFiles(baseDir + File.separator + doc.getNombreArchivo(), destination, tipoEstadoCuenta, doc.getIndices().get(3).getValor());
-                                    } else {
-                                        LOGGER.debug("El documento ya está indexado.");
-                                    }
-                                }
-                            }
-                        } else {
-                            LOGGER.error("metadata TXT file not found: {}", txtLocalPath);
-                        }
+            if (checkDirectoriesExist()) {
+                try (WatchService watchService = createWatchService()) {
+                    WatchKey key;
+                    while ((key = watchService.take()) != null) {
+                        processEvents(key);
+                        key.reset();
                     }
-                    // Reset the WatchKey to continue watching for events
-                    key.reset();
                 }
             } else {
-                LOGGER.fatal("Invalid folder path!");
+                LOGGER.fatal("Directories not found: {}, {}", directoryPathEct, directoryPathEcc);
             }
         } catch (Exception e) {
-            // Log and handle any exceptions that occur
-            LOGGER.debug("Error in watchDirectory method: ", e);
+            LOGGER.warn("Error in watchDirectory method: ", e);
+        }
+    }
+
+    private boolean checkDirectoriesExist() {
+        return folderExist(directoryPathEct) && folderExist(directoryPathEcc);
+    }
+
+    private WatchService createWatchService() throws IOException {
+        WatchService watchService = FileSystems.getDefault().newWatchService();
+        Path pathEtc = Paths.get(directoryPathEct);
+        Path pathEcc = Paths.get(directoryPathEcc);
+        pathEtc.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
+        pathEcc.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
+        return watchService;
+    }
+
+    private void processEvents(WatchKey key) {
+        Path baseDir = (Path) key.watchable();
+        String tipoEstadoCuenta = fetchTipoEstadoCuenta(baseDir);
+        for (WatchEvent<?> event : key.pollEvents()) {
+            String txtLocalPath = baseDir + File.separator + event.context();
+            if (checkTxtIsValid(txtLocalPath)) {
+                List<Documento> documentos = fetchTxtMetadata(baseDir, txtLocalPath, tipoEstadoCuenta);
+                if (!documentos.isEmpty()) {
+                    processDocumentos(documentos, baseDir, tipoEstadoCuenta);
+                }
+            } else {
+                LOGGER.warn("Invalid TXT file: {}", txtLocalPath);
+            }
+        }
+    }
+
+
+    private void processDocumentos(List<Documento> documentos, Path baseDir, String tipoEstadoCuenta) {
+        for (Documento doc : documentos) {
+            if (!docuwareService.documentExist(doc)) {
+                String status = docuwareService.indexDocument(doc);
+                LOGGER.debug("API response after indexing: {}", status);
+                moveFiles(baseDir + File.separator + doc.getNombreArchivo(), destination, tipoEstadoCuenta, doc.getIndices().get(3).getValor());
+            } else {
+                LOGGER.debug("Document already indexed: {}", doc.getNombreArchivo());
+            }
         }
     }
 
@@ -145,7 +156,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         try (Stream<String> stream = Files.lines(Paths.get(txtFilePath))) {
             return stream.map(this::composeRegistro).filter(Objects::nonNull).filter(newRegistro -> pdfFileExist(baseDir + File.separator + newRegistro.getNombreArchivo())).map(newRegistro -> composeDocumento(baseDir, newRegistro, tipoEstadoCuenta)).collect(Collectors.toList());
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.warn("Error in fetchTxtMetadata method: ", e);
             return new ArrayList<>();
         }
     }
@@ -246,7 +257,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
             return registro;
         } else {
             // Log a message if the text line doesn't have all fields
-            LOGGER.debug("Text line hasn't all fields needed");
+            LOGGER.debug("Text line doesn't have all required fields: {}", txtLine);
             return null;
         }
     }
@@ -274,7 +285,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
             Files.move(sourcePath, destinationPath.resolve(sourcePath.getFileName()), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             // Handle any IOException that occurs during the file moving process
-            e.printStackTrace();
+            LOGGER.warn("Error in moveFiles method: ", e);
         }
     }
 

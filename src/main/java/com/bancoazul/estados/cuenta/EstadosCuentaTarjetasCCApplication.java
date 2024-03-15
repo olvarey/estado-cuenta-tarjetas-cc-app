@@ -29,7 +29,7 @@ public class EstadosCuentaTarjetasCCApplication implements CommandLineRunner {
      * @param args The command line arguments passed to the application
      */
     public static void main(String[] args) {
-        LOGGER.debug("STARTING THE APPLICATION");
+        LOGGER.debug("APPLICATION STARTED");
         SpringApplication.run(EstadosCuentaTarjetasCCApplication.class, args);
         LOGGER.debug("APPLICATION FINISHED");
     }
