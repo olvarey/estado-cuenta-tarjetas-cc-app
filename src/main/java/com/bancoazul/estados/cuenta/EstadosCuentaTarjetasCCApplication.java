@@ -22,12 +22,24 @@ public class EstadosCuentaTarjetasCCApplication implements CommandLineRunner {
     private static final Logger LOGGER = LogManager.getLogger(EstadosCuentaTarjetasCCApplication.class);
     private final MonitoreoCarpetaService monitoreoCarpetaService;
 
+    /**
+     * This method starts the application by running the Spring Boot application.
+     * It logs the starting and finishing of the application.
+     *
+     * @param args The command line arguments passed to the application
+     */
     public static void main(String[] args) {
-        LOGGER.debug("STARTING THE APPLICATION");
+        LOGGER.debug("APPLICATION STARTED");
         SpringApplication.run(EstadosCuentaTarjetasCCApplication.class, args);
         LOGGER.debug("APPLICATION FINISHED");
     }
 
+    /**
+     * This method runs the directory monitoring service.
+     *
+     * @param args Command line arguments
+     * @throws Exception if an error occurs during directory monitoring
+     */
     @Override
     public void run(String... args) throws Exception {
         monitoreoCarpetaService.watchDirectory();
