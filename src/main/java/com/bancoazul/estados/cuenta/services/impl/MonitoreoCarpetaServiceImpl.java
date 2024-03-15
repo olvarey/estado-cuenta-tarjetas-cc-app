@@ -49,9 +49,6 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     /**
      * Watches the specified directories for new file creation events and processes the new files.
      */
-    /**
-     * Watches the specified directories for new file creation events and processes the new files.
-     */
     @Override
     public void watchDirectory() {
         try {

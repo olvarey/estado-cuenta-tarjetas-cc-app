@@ -14,15 +14,15 @@ banco:
     estados:
       cuenta:
         docuware:
-          url: "http://172.29.1.115/DWDES/ServiciosDW.svc/"
-          user: bancoAzul
-          password: BAzul2017
-          idArchivador: 07272c0a-2916-47a4-947f-41c0cc4864e1
+          url: ${DOCUWARE_SERVER}
+          user: ${DOCUWARE_USER}
+          password: ${DOCUWARE_PASSWORD}
+          idArchivador: ${ID_ARCHIVADOR}
         directorio:
-          ect: C:\DOCS_TEST\ECT
-          ecc: C:\DOCS_TEST\ECC
-          indexados: C:\ESTADOS_CUENTA_INDEXADOS
-          metadata: metadata.txt
+          ect: ${ECT_DIRECTORY}
+          ecc: ${ECC_DIRECTORY}
+          indexados: ${INDEXADOS_DIRECTORY}
+          metadata: ${METADATA_FILE}
 
 # QA properties
 ---
@@ -36,15 +36,15 @@ banco:
     estados:
       cuenta:
         docuware:
-          url: "http://172.29.1.115/DWDES/ServiciosDW.svc/"
-          user: bancoAzul
-          password: BAzul2017
-          idArchivador: 07272c0a-2916-47a4-947f-41c0cc4864e1
+          url: ${DOCUWARE_SERVER}
+          user: ${DOCUWARE_USER}
+          password: ${DOCUWARE_PASSWORD}
+          idArchivador: ${ID_ARCHIVADOR}
         directorio:
-          ect: C:\DOCS_TEST\ECT
-          ecc: C:\DOCS_TEST\ECC
-          indexados: C:\ESTADOS_CUENTA_INDEXADOS
-          metadata: metadata.txt
+          ect: ${ECT_DIRECTORY}
+          ecc: ${ECC_DIRECTORY}
+          indexados: ${INDEXADOS_DIRECTORY}
+          metadata: ${METADATA_FILE}
 
 # PROD properties
 ---
@@ -58,12 +58,12 @@ banco:
     estados:
       cuenta:
         docuware:
-          url: "http://172.29.1.115/DWDES/ServiciosDW.svc/"
-          user: bancoAzul
-          password: BAzul2017
-          idArchivador: 07272c0a-2916-47a4-947f-41c0cc4864e1
+          url: ${DOCUWARE_SERVER}
+          user: ${DOCUWARE_USER}
+          password: ${DOCUWARE_PASSWORD}
+          idArchivador: ${ID_ARCHIVADOR}
         directorio:
-          ect: C:\DOCS_TEST\ECT
-          ecc: C:\DOCS_TEST\ECC
-          indexados: C:\ESTADOS_CUENTA_INDEXADOS
-          metadata: metadata.txt
+          ect: ${ECT_DIRECTORY}
+          ecc: ${ECC_DIRECTORY}
+          indexados: ${INDEXADOS_DIRECTORY}
+          metadata: ${METADATA_FILE}
