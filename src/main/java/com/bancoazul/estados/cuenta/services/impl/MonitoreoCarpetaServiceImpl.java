@@ -19,6 +19,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -45,6 +47,8 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     private String metaDataFileName;
     @Value("${banco.azul.estados.cuenta.docuware.idArchivador}")
     private String idArchivador;
+
+    ExecutorService executor = Executors.newFixedThreadPool(5);
 
     /**
      * Watches the specified directories for new file creation events and processes the new files.
@@ -138,15 +142,16 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
      */
     private void processDocumentos(List<Documento> documentos, Path baseDir, String tipoEstadoCuenta) {
         for (Documento doc : documentos) {
-            if (!docuwareService.documentExist(doc)) {
-                // Index the document in the document management service
-                String status = docuwareService.indexDocument(doc);
-                LOGGER.debug("API response after indexing: {}", status);
-                // Move the file to the destination folder based on certain criteria
-                moveFiles(baseDir + File.separator + doc.getNombreArchivo(), destination, tipoEstadoCuenta, doc.getIndices().get(3).getValor());
-            } else {
-                LOGGER.debug("Document already indexed: {}", doc.getNombreArchivo());
-            }
+            //if (!docuwareService.documentExist(doc)) {
+            // Index the document in the document management service
+            //String status = docuwareService.indexDocument(doc);
+            executor.submit(() -> docuwareService.indexDocument(doc));
+            //LOGGER.debug("API response after indexing: {}", status);
+            // Move the file to the destination folder based on certain criteria
+            //moveFiles(baseDir + File.separator + doc.getNombreArchivo(), destination, tipoEstadoCuenta, doc.getIndices().get(3).getValor());
+            // } else {
+            //     LOGGER.debug("Document already indexed: {}", doc.getNombreArchivo());
+            //  }
         }
     }
 
