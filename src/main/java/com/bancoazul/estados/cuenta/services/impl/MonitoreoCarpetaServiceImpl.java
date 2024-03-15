@@ -68,41 +68,81 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         }
     }
 
+    /**
+     * Checks if the required directories exist.
+     *
+     * @return true if both directories exist, false otherwise
+     */
     private boolean checkDirectoriesExist() {
         return folderExist(directoryPathEct) && folderExist(directoryPathEcc);
     }
 
+    /**
+     * Creates a new WatchService and registers the specified directories for entry creation events.
+     *
+     * @return the created WatchService
+     * @throws IOException if an I/O error occurs
+     */
     private WatchService createWatchService() throws IOException {
+        // Create a new WatchService
         WatchService watchService = FileSystems.getDefault().newWatchService();
+
+        // Register the specified directories for entry creation events
         Path pathEtc = Paths.get(directoryPathEct);
         Path pathEcc = Paths.get(directoryPathEcc);
         pathEtc.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
         pathEcc.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
+
         return watchService;
     }
 
+    /**
+     * Processes events related to a specific WatchKey
+     *
+     * @param key The WatchKey to process events for
+     */
     private void processEvents(WatchKey key) {
+        // Get the base directory from the WatchKey
         Path baseDir = (Path) key.watchable();
+
+        // Fetch the type of Estado de Cuenta
         String tipoEstadoCuenta = fetchTipoEstadoCuenta(baseDir);
+
+        // Iterate through each event in the WatchKey
         for (WatchEvent<?> event : key.pollEvents()) {
+            // Construct the local path for the event
             String txtLocalPath = baseDir + File.separator + event.context();
+
+            // Check if the TXT file is valid
             if (checkTxtIsValid(txtLocalPath)) {
+                // Fetch metadata for the TXT file and process the documents
                 List<Documento> documentos = fetchTxtMetadata(baseDir, txtLocalPath, tipoEstadoCuenta);
                 if (!documentos.isEmpty()) {
                     processDocumentos(documentos, baseDir, tipoEstadoCuenta);
                 }
             } else {
+                // Log a warning for invalid TXT files
                 LOGGER.warn("Invalid TXT file: {}", txtLocalPath);
             }
         }
     }
 
 
+    /**
+     * Processes a list of documents by checking if they exist in the document management service.
+     * If a document doesn't exist, it indexes it and moves the file to a specified destination.
+     *
+     * @param documentos       The list of documents to process
+     * @param baseDir          The base directory path where the documents are located
+     * @param tipoEstadoCuenta The type of account state
+     */
     private void processDocumentos(List<Documento> documentos, Path baseDir, String tipoEstadoCuenta) {
         for (Documento doc : documentos) {
             if (!docuwareService.documentExist(doc)) {
+                // Index the document in the document management service
                 String status = docuwareService.indexDocument(doc);
                 LOGGER.debug("API response after indexing: {}", status);
+                // Move the file to the destination folder based on certain criteria
                 moveFiles(baseDir + File.separator + doc.getNombreArchivo(), destination, tipoEstadoCuenta, doc.getIndices().get(3).getValor());
             } else {
                 LOGGER.debug("Document already indexed: {}", doc.getNombreArchivo());
