@@ -23,6 +23,9 @@ banco:
           ecc: ${ECC_DIRECTORY}
           indexados: ${INDEXADOS_DIRECTORY}
           metadata: ${METADATA_FILE}
+        thread:
+          maxThreads: ${MAX_WORKERS}
+
 
 # QA properties
 ---
@@ -45,6 +48,8 @@ banco:
           ecc: ${ECC_DIRECTORY}
           indexados: ${INDEXADOS_DIRECTORY}
           metadata: ${METADATA_FILE}
+        thread:
+          maxThreads: ${MAX_WORKERS}
 
 # PROD properties
 ---
@@ -67,3 +72,5 @@ banco:
           ecc: ${ECC_DIRECTORY}
           indexados: ${INDEXADOS_DIRECTORY}
           metadata: ${METADATA_FILE}
+        thread:
+          maxThreads: ${MAX_WORKERS}

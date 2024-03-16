@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -47,15 +48,20 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     private String metaDataFileName;
     @Value("${banco.azul.estados.cuenta.docuware.idArchivador}")
     private String idArchivador;
+    @Value("${banco.azul.estados.cuenta.thread.maxThreads}")
+    private Integer maxThreads;
 
-    ExecutorService executor = Executors.newFixedThreadPool(5);
+    ExecutorService executor;
 
     /**
-     * Watches the specified directories for new file creation events and processes the new files.
+     * Watches the specified directories for new file creation events and processes
+     * the new files.
      */
     @Override
     public void watchDirectory() {
         try {
+            executor = Executors.newFixedThreadPool(maxThreads);
+
             if (checkDirectoriesExist()) {
                 try (WatchService watchService = createWatchService()) {
                     WatchKey key;
@@ -82,7 +88,8 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     }
 
     /**
-     * Creates a new WatchService and registers the specified directories for entry creation events.
+     * Creates a new WatchService and registers the specified directories for entry
+     * creation events.
      *
      * @return the created WatchService
      * @throws IOException if an I/O error occurs
@@ -120,10 +127,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
             // Check if the TXT file is valid
             if (checkTxtIsValid(txtLocalPath)) {
                 // Fetch metadata for the TXT file and process the documents
-                List<Documento> documentos = fetchTxtMetadata(baseDir, txtLocalPath, tipoEstadoCuenta);
-                if (!documentos.isEmpty()) {
-                    processDocumentos(documentos, baseDir, tipoEstadoCuenta);
-                }
+                executor.submit(() -> processMetadata(baseDir, txtLocalPath, tipoEstadoCuenta));
             } else {
                 // Log a warning for invalid TXT files
                 LOGGER.warn("Invalid TXT file: {}", txtLocalPath);
@@ -131,28 +135,48 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         }
     }
 
+    private void processMetadata(Path baseDir, String txtLocalPath, String tipoEstadoCuenta) {
+        List<Documento> documentos = fetchTxtMetadata(baseDir, txtLocalPath, tipoEstadoCuenta);
+        if (!documentos.isEmpty()) {
+            for (Documento doc : documentos) {
+                executor.submit(() -> processDocument(doc, baseDir, tipoEstadoCuenta));
+            }
+        }
+    }
 
     /**
-     * Processes a list of documents by checking if they exist in the document management service.
-     * If a document doesn't exist, it indexes it and moves the file to a specified destination.
+     * Processes a document by checking if it exists in the document management service. If the document
+     * doesn't exist, it indexes it and moves the file to a specified destination based on certain criteria.
      *
-     * @param documentos       The list of documents to process
-     * @param baseDir          The base directory path where the documents are located
+     * @param doc              The document to process
+     * @param baseDir          The base directory path where the document is located
      * @param tipoEstadoCuenta The type of account state
      */
-    private void processDocumentos(List<Documento> documentos, Path baseDir, String tipoEstadoCuenta) {
-        for (Documento doc : documentos) {
-            //if (!docuwareService.documentExist(doc)) {
+    private void processDocument(Documento doc, Path baseDir, String tipoEstadoCuenta) {
+        // Log the start of document processing
+        LOGGER.info("Start processing document {}", doc.getNombreArchivo());
+
+        // Record the start time for performance measurement
+        long startTime = System.currentTimeMillis();
+
+        // Check if the document exists in the document management service
+        if (!docuwareService.documentExist(doc)) {
             // Index the document in the document management service
-            //String status = docuwareService.indexDocument(doc);
-            executor.submit(() -> docuwareService.indexDocument(doc));
-            //LOGGER.debug("API response after indexing: {}", status);
+            String status = docuwareService.indexDocument(doc);
+
+            // Log the API response after indexing
+            LOGGER.debug("API response after indexing: {}", status);
+
             // Move the file to the destination folder based on certain criteria
             //moveFiles(baseDir + File.separator + doc.getNombreArchivo(), destination, tipoEstadoCuenta, doc.getIndices().get(3).getValor());
-            // } else {
-            //     LOGGER.debug("Document already indexed: {}", doc.getNombreArchivo());
-            //  }
+        } else {
+            // Log a warning if the document is already indexed
+            LOGGER.warn("Document already indexed: {}", doc.getNombreArchivo());
         }
+
+        // Calculate the time taken for document processing
+        long endTime = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startTime);
+        LOGGER.info("Finish processing document {} in {} seconds", doc.getNombreArchivo(), endTime);
     }
 
     /**
@@ -234,12 +258,14 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     public String fetchTipoEstadoCuenta(Path baseDir) {
         String tipoEstadoCuenta = "";
 
-        // Check if the directory path matches directoryPathEct and assign tipoEstadoCuenta accordingly
+        // Check if the directory path matches directoryPathEct and assign
+        // tipoEstadoCuenta accordingly
         if (directoryPathEct.equals(baseDir.toString())) {
             tipoEstadoCuenta = "EC01";
         }
 
-        // Check if the directory path matches directoryPathEcc and assign tipoEstadoCuenta accordingly
+        // Check if the directory path matches directoryPathEcc and assign
+        // tipoEstadoCuenta accordingly
         if (directoryPathEcc.equals(baseDir.toString())) {
             tipoEstadoCuenta = "EC02";
         }
@@ -249,10 +275,8 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
 
     /**
      * Checks if the provided text file is valid based on certain criteria.
-     * Criteria:
-     * 1. The file must exist.
-     * 2. The file name must match a specified metadata file name.
-     * 3. The file must have a .txt extension.
+     * Criteria: 1. The file must exist. 2. The file name must match a specified
+     * metadata file name. 3. The file must have a .txt extension.
      *
      * @param txtLocalPath The local path of the text file to be checked.
      * @return true if the text file is valid, false otherwise.
@@ -264,7 +288,8 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         // Check if the file exists
         boolean fileExist = txtFile.exists();
 
-        // Check if the file name matches the specified metadata file name (case-insensitive)
+        // Check if the file name matches the specified metadata file name
+        // (case-insensitive)
         boolean isNamedProperly = metaDataFileName.equals(txtFile.getName().toLowerCase());
 
         // Check if the file has a .txt extension (case-insensitive)
@@ -278,7 +303,8 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
      * Composes a Registro object from a text line.
      *
      * @param txtLine The text line containing fields separated by commas.
-     * @return A Registro object if the text line contains all required fields, null otherwise.
+     * @return A Registro object if the text line contains all required fields, null
+     * otherwise.
      */
     public Registro composeRegistro(String txtLine) {
         // Create a new Registro object
@@ -335,7 +361,8 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
      * Converts the month from a number to its Spanish name
      *
      * @param monthNumber the number of the month (e.g., "01" for Enero)
-     * @return the Spanish name of the month, or an empty string if the input is invalid
+     * @return the Spanish name of the month, or an empty string if the input is
+     * invalid
      */
     private String convertMonthNumberToName(String monthNumber) {
         switch (monthNumber) {
