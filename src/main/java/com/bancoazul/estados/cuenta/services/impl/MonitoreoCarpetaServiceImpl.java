@@ -168,7 +168,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
             LOGGER.debug("API response after indexing: {}", status);
 
             // Move the file to the destination folder based on certain criteria
-            //moveFiles(baseDir + File.separator + doc.getNombreArchivo(), destination, tipoEstadoCuenta, doc.getIndices().get(3).getValor());
+            moveFiles(baseDir + File.separator + doc.getNombreArchivo(), destination, tipoEstadoCuenta, doc.getIndices().get(3).getValor());
         } else {
             // Log a warning if the document is already indexed
             LOGGER.warn("Document already indexed: {}", doc.getNombreArchivo());
