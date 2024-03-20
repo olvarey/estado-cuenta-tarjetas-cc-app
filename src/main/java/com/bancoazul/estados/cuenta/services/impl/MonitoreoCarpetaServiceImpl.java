@@ -49,7 +49,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     @Value("${banco.azul.estados.cuenta.docuware.idArchivador}")
     private String idArchivador;
     @Value("${banco.azul.estados.cuenta.thread.maxThreads}")
-    private Integer maxThreads;
+    private String maxThreads;
 
     ExecutorService executor;
 
@@ -60,7 +60,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     @Override
     public void watchDirectory() {
         try {
-            executor = Executors.newFixedThreadPool(maxThreads);
+            executor = Executors.newFixedThreadPool(Integer.parseInt(maxThreads));
 
             if (checkDirectoriesExist()) {
                 try (WatchService watchService = createWatchService()) {
