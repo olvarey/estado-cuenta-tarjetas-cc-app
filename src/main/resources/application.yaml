@@ -25,6 +25,9 @@ banco:
           metadata: ${METADATA_FILE}
         thread:
           maxThreads: ${MAX_WORKERS}
+        schedule:
+          cron: ${SCHEDULE}
+          maxExecutionTime: ${MAX_EXECUTION_DURATION_SECONDS}
 
 
 # QA properties
@@ -50,6 +53,9 @@ banco:
           metadata: ${METADATA_FILE}
         thread:
           maxThreads: ${MAX_WORKERS}
+        schedule:
+          cron: ${SCHEDULE}
+          maxExecutionTime: ${MAX_EXECUTION_DURATION_SECONDS}
 
 # PROD properties
 ---
@@ -74,3 +80,6 @@ banco:
           metadata: ${METADATA_FILE}
         thread:
           maxThreads: ${MAX_WORKERS}
+        schedule:
+          cron: ${SCHEDULE}
+          maxExecutionTime: ${MAX_EXECUTION_DURATION_SECONDS}
