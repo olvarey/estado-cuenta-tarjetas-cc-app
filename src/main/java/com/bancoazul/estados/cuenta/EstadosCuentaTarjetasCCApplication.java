@@ -7,6 +7,7 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * EstadosCuentaTarjetasCCApplication: Main class responsable for monitoring
@@ -16,6 +17,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author Melvin Reyes
  */
 @SpringBootApplication
+@EnableScheduling
 @RequiredArgsConstructor
 public class EstadosCuentaTarjetasCCApplication implements CommandLineRunner {
 
@@ -42,6 +44,6 @@ public class EstadosCuentaTarjetasCCApplication implements CommandLineRunner {
      */
     @Override
     public void run(String... args) throws Exception {
-        monitoreoCarpetaService.watchDirectory();
+        //monitoreoCarpetaService.watchDirectory();
     }
 }

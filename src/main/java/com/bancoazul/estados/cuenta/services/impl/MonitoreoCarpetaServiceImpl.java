@@ -51,7 +51,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     @Value("${banco.azul.estados.cuenta.thread.maxThreads}")
     private String maxThreads;
 
-    ExecutorService executor;
+    private final ExecutorService executor;
 
     /**
      * Watches the specified directories for new file creation events and processes
@@ -60,7 +60,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     @Override
     public void watchDirectory() {
         try {
-            executor = Executors.newFixedThreadPool(Integer.parseInt(maxThreads));
+            //executor = Executors.newFixedThreadPool(Integer.parseInt(maxThreads));
 
             if (checkDirectoriesExist()) {
                 try (WatchService watchService = createWatchService()) {
@@ -135,8 +135,10 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         }
     }
 
-    private void processMetadata(Path baseDir, String txtLocalPath, String tipoEstadoCuenta) {
+    public void processMetadata(Path baseDir, String txtLocalPath, String tipoEstadoCuenta) {
         List<Documento> documentos = fetchTxtMetadata(baseDir, txtLocalPath, tipoEstadoCuenta);
+        LOGGER.info("Number of documents to process: {}", documentos.size());
+        LOGGER.info("Executor status: {}", executor == null ? "Es nulo man" : executor.toString());
         if (!documentos.isEmpty()) {
             for (Documento doc : documentos) {
                 executor.submit(() -> processDocument(doc, baseDir, tipoEstadoCuenta));
