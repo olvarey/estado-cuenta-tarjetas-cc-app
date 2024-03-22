@@ -10,11 +10,11 @@ import java.util.concurrent.Executors;
 @Configuration
 public class ExecutorConfig {
 
-    @Value("${banco.azul.estados.cuenta.thread.maxThreads}")
-    private String maxThreads;
+	@Value("${banco.azul.estados.cuenta.thread.maxThreads}")
+	private String maxThreads;
 
-    @Bean
-    public ExecutorService executorService() {
-        return Executors.newFixedThreadPool(Integer.parseInt(maxThreads));
-    }
+	@Bean
+	public ExecutorService executorService() {
+		return Executors.newFixedThreadPool(10);
+	}
 }
