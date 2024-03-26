@@ -71,11 +71,16 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         String tipoEstadoCuenta2 = "EC02";
 
         if (checkBaseDirs(baseDir1)) {
+            LOGGER.info("Process metadata ECT: {}", txtLocalPath1);
             this.processMetadata(baseDir1, txtLocalPath1, tipoEstadoCuenta1, true);
-        } else if (checkBaseDirs(baseDir2)) {
+        } else {
+            LOGGER.info("Base directory ECT not found or empty");
+        }
+        if (checkBaseDirs(baseDir2)) {
+            LOGGER.info("Process metadata ECC: {}", txtLocalPath2);
             this.processMetadata(baseDir2, txtLocalPath2, tipoEstadoCuenta2, true);
         } else {
-            LOGGER.info("Base directories not found or empty");
+            LOGGER.info("Base directory ECC not found or empty");
         }
     }
 
@@ -86,10 +91,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
      * @return true if the base directory exists and contains files, false otherwise
      */
     private boolean checkBaseDirs(Path baseDir) {
-        if (Objects.nonNull(baseDir) && Files.exists(baseDir)) {
-            return Objects.requireNonNull(baseDir.toFile().listFiles()).length > 0;
-        }
-        return false;
+        return Objects.nonNull(baseDir) && Files.exists(baseDir) && Objects.requireNonNull(baseDir.toFile().listFiles()).length > 0;
     }
 
     /**
@@ -99,7 +101,6 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     @Override
     public void watchDirectory() {
         try {
-
             if (checkDirectoriesExist()) {
                 try (WatchService watchService = createWatchService()) {
                     WatchKey key;
@@ -185,6 +186,11 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         LOGGER.debug("Process metadata: {}", txtLocalPath);
 
         // Fetch txt metadata
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         List<Documento> documentos = fetchTxtMetadata(baseDir, txtLocalPath, tipoEstadoCuenta);
         LOGGER.info("Number of documents to process: {}", documentos.size());
 
@@ -198,10 +204,13 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         if (!documentos.isEmpty()) {
             for (Documento doc : documentos) {
                 if (isScheduled && Instant.now().isAfter(endTime)) {
+                    LOGGER.info("Task execution time exceeded: {}", maxExecutionTime);
                     break;
                 }
                 executor.submit(() -> this.processDocument(doc, baseDir, tipoEstadoCuenta));
             }
+        } else {
+            LOGGER.debug("Documents not found!");
         }
     }
 
@@ -250,6 +259,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
      * @return The composed Documento object.
      */
     private Documento composeDocumento(Path baseDir, Registro registro, String tipoEstadoCuenta) {
+        LOGGER.debug("composeDocumento {}{}{}", baseDir, File.separator, registro.getNombreArchivo());
         // Create a new Documento object
         Documento newDocumento = new Documento();
 
@@ -281,6 +291,7 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
      * @return a list of Documento objects containing the metadata
      */
     private List<Documento> fetchTxtMetadata(Path baseDir, String txtFilePath, String tipoEstadoCuenta) {
+        LOGGER.debug("fetch metadata lines:");
         try (Stream<String> stream = Files.lines(Paths.get(txtFilePath))) {
             return stream.map(this::composeRegistro).filter(Objects::nonNull).filter(newRegistro -> pdfFileExist(baseDir + File.separator + newRegistro.getNombreArchivo())).map(newRegistro -> composeDocumento(baseDir, newRegistro, tipoEstadoCuenta)).collect(Collectors.toList());
         } catch (IOException e) {
