@@ -70,8 +70,9 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
         String tipoEstadoCuenta1 = "EC01";
         String tipoEstadoCuenta2 = "EC02";
 
-        if (checkBaseDirs(baseDir1, baseDir2)) {
+        if (checkBaseDirs(baseDir1)) {
             this.processMetadata(baseDir1, txtLocalPath1, tipoEstadoCuenta1, true);
+        } else if (checkBaseDirs(baseDir2)) {
             this.processMetadata(baseDir2, txtLocalPath2, tipoEstadoCuenta2, true);
         } else {
             LOGGER.info("Base directories not found or empty");
@@ -79,22 +80,17 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
     }
 
     /**
-     * Checks if both base directories exist and have files in them.
+     * Checks if the provided base directory exists and contains files.
      *
-     * @param baseDir1 The first base directory path to check.
-     * @param baseDir2 The second base directory path to check.
-     * @return true if both directories exist and have files, false otherwise.
+     * @param baseDir the base directory path to check
+     * @return true if the base directory exists and contains files, false otherwise
      */
-    private boolean checkBaseDirs(Path baseDir1, Path baseDir2) {
-        // Check if both base directories are not null and exist
-        if (Objects.nonNull(baseDir1) && Files.exists(baseDir1) && Objects.nonNull(baseDir2) && Files.exists(baseDir2)) {
-            // Return true if both directories have files
-            return Objects.requireNonNull(baseDir1.toFile().listFiles()).length > 0 && Objects.requireNonNull(baseDir2.toFile().listFiles()).length > 0;
+    private boolean checkBaseDirs(Path baseDir) {
+        if (Objects.nonNull(baseDir) && Files.exists(baseDir)) {
+            return Objects.requireNonNull(baseDir.toFile().listFiles()).length > 0;
         }
-        // Return false if any of the directories is null or does not exist
         return false;
     }
-
 
     /**
      * Watches the specified directories for new file creation events and processes
