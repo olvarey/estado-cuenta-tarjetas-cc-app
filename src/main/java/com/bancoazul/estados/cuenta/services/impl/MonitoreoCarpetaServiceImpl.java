@@ -196,14 +196,14 @@ public class MonitoreoCarpetaServiceImpl implements MonitoreoCarpetaService {
 
         // Set start and end time for task execution
         Instant startTime = Instant.now();
-        LOGGER.debug("Start time: {}", startTime);
+        LOGGER.info("Start time: {}", startTime);
         Instant endTime = startTime.plusSeconds(Long.parseLong(maxExecutionTime));
-        LOGGER.debug("End time: {}", endTime);
+        LOGGER.info("End time: {}", endTime);
 
         // Submit tasks to the executor
         if (!documentos.isEmpty()) {
             for (Documento doc : documentos) {
-                if (isScheduled && Instant.now().isAfter(endTime)) {
+                if (isScheduled && !Instant.now().isBefore(endTime)) {
                     LOGGER.info("Task execution time exceeded: {}", maxExecutionTime);
                     break;
                 }
